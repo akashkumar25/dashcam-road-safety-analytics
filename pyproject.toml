@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dashcam-analytics"
+version = "0.1.0"
+description = "Dashcam video analytics on CPU: detection, tracking, following distance and near-miss events."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Akash Kumar" }]
+dependencies = ["pydantic>=2.5", "pydantic-settings>=2.1"]
+
+[project.optional-dependencies]
+vision = ["ultralytics>=8.3", "supervision>=0.25", "opencv-python-headless>=4.9"]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+dashcam-analytics = "dashcam_analytics.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
