@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+from pathlib import Path
 
 from . import __version__
 from .config import Settings
@@ -22,6 +23,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="command")
     sub.add_parser("status", help="show configuration and discovered videos")
+    analyse = sub.add_parser("analyze", help="detect and track road users in a video")
+    analyse.add_argument("video", type=Path)
+    analyse.add_argument("--out-video", type=Path, help="write an annotated video here")
+    analyse.add_argument("--summary", type=Path, help="write the JSON summary here")
+    analyse.add_argument("--max-frames", type=int)
     args = parser.parse_args(argv)
 
     if args.command == "status":
@@ -31,6 +37,28 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Videos in {s.videos_dir}: {len(videos)}")
         for name in videos:
             print(f"  - {name}")
+        return 0
+    if args.command == "analyze":
+        try:
+            from .pipeline import YoloDetector, analyse_video
+        except ImportError:
+            print('error: install the vision stack: pip install -e ".[vision]"', file=sys.stderr)
+            return 1
+        s = Settings()
+        detector = YoloDetector(s.yolo_model, s.image_size, s.confidence)
+        try:
+            summary = analyse_video(args.video, detector, args.out_video, args.max_frames)
+        except FileNotFoundError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        text = summary.model_dump_json(indent=2)
+        if args.summary:
+            args.summary.parent.mkdir(parents=True, exist_ok=True)
+            args.summary.write_text(text)
+        print(
+            f"{summary.frames} frames, {summary.vehicles} vehicles, "
+            f"{summary.pedestrians} pedestrians"
+        )
         return 0
     parser.print_help()
     return 0

@@ -27,6 +27,15 @@ docker compose up --build
 
 Copy `.env.example` to `.env` to change the model or thresholds. Put videos in `data/videos/`.
 
+## Analyze a video
+
+```bash
+pip install -e ".[vision]"      # ultralytics (CPU torch), supervision, OpenCV
+dashcam-analytics analyze data/videos/drive.mp4 --out-video data/output/annotated.mp4 --summary data/output/summary.json
+```
+
+YOLO (default `yolov8n.pt`, restricted to person, car, motorcycle, bus, truck) feeds supervision's ByteTrack. The summary lists each track (id, class, first/last frame) and counts unique vehicles and pedestrians; tracks seen in fewer than 3 frames are dropped as noise. The detector is injectable (`analyse_video(video, detector)`), so tests run on a synthetic video with a scripted detector and need only the `video` extra (supervision + OpenCV), not model weights. The real YOLO path needs the weights, which Ultralytics downloads on first use.
+
 ## Development
 
 ```bash
@@ -37,7 +46,7 @@ pytest
 ## Roadmap
 
 - [x] Scaffold: package layout, settings, CLI, tests, CI, Docker
-- [ ] Detection and multi-object tracking pipeline on a sample video
+- [x] Detection and multi-object tracking pipeline
 - [ ] Monocular distance estimation and time-to-collision warnings
 - [ ] Event detection (near-miss, sudden braking proxy, pedestrian proximity) with CSV/JSON export
 - [ ] Gradio UI and annotated video output
