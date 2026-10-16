@@ -17,6 +17,8 @@ import numpy as np
 import supervision as sv
 from pydantic import BaseModel
 
+from .distance import CameraModel, DistanceEstimator, RiskWarning, classify
+
 # COCO class ids -> report label
 CLASS_LABELS = {0: "pedestrian", 2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
 VEHICLE_LABELS = {"car", "motorcycle", "bus", "truck"}
@@ -65,6 +67,8 @@ class VideoSummary(BaseModel):
     height: int
     counts: dict[str, int]
     tracks: list[TrackRecord]
+    min_distance_m: float | None = None
+    warnings: list[RiskWarning] = []
 
     @property
     def vehicles(self) -> int:
@@ -81,6 +85,7 @@ def analyse_video(
     out_video: Path | None = None,
     max_frames: int | None = None,
     min_track_frames: int = 3,
+    hfov_deg: float = 90.0,
 ) -> VideoSummary:
     """Track road users through ``video``; tracks seen in fewer than ``min_track_frames`` frames
     are treated as noise and left out of the counts."""
@@ -97,6 +102,9 @@ def analyse_video(
         writer = cv2.VideoWriter(
             str(out_video), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
         )
+    estimator = DistanceEstimator(CameraModel(width=width, hfov_deg=hfov_deg), fps)
+    warnings: list[RiskWarning] = []
+    min_distance: float | None = None
     tracker = sv.ByteTrack(frame_rate=max(1, round(fps)))
     box_annotator, label_annotator = sv.BoxAnnotator(), sv.LabelAnnotator()
 
@@ -113,16 +121,23 @@ def analyse_video(
                 keep = np.isin(detections.class_id, list(CLASS_LABELS))
                 detections = detections[keep]
             tracked = tracker.update_with_detections(detections)
-            for tid, cid in zip(tracked.tracker_id, tracked.class_id):
-                labels_by_track[int(tid)] = CLASS_LABELS[int(cid)]
+            texts: list[str] = []
+            for tid, cid, box in zip(tracked.tracker_id, tracked.class_id, tracked.xyxy):
+                label = CLASS_LABELS[int(cid)]
+                labels_by_track[int(tid)] = label
                 seen[int(tid)].append(frame_index)
+                reading = estimator.update(frame_index, int(tid), label, tuple(box))
+                text = f"#{int(tid)} {label}"
+                if reading is not None:
+                    text += f" {reading.distance_m:.0f}m"
+                    lead = reading.in_ego_lane and label != "pedestrian"
+                    if lead and (min_distance is None or reading.distance_m < min_distance):
+                        min_distance = reading.distance_m
+                    warnings.extend(classify(frame_index, reading))
+                texts.append(text)
             if writer is not None:
-                text = [
-                    f"#{int(t)} {CLASS_LABELS[int(c)]}"
-                    for t, c in zip(tracked.tracker_id, tracked.class_id)
-                ]
                 frame = box_annotator.annotate(frame.copy(), tracked)
-                frame = label_annotator.annotate(frame, tracked, labels=text)
+                frame = label_annotator.annotate(frame, tracked, labels=texts)
                 writer.write(frame)
             frame_index += 1
     finally:
@@ -152,4 +167,6 @@ def analyse_video(
         height=height,
         counts=dict(counts),
         tracks=tracks,
+        min_distance_m=min_distance,
+        warnings=warnings,
     )

@@ -43,11 +43,17 @@ ruff check .
 pytest
 ```
 
+## Distance and time-to-collision
+
+Each tracked road user gets a distance from the pinhole model `distance = focal_px * real_height / box_height_px`, with the focal length derived from the camera's horizontal field of view (`--hfov`, default 90 degrees) and a typical height per class (car 1.5 m, truck 3.0 m, pedestrian 1.7 m, ...). Closing speed is the change in distance over a short window and TTC is `distance / closing speed`. Objects whose box centre lies in the central 36% of the frame count as the ego lane. Warnings in the JSON summary (`warnings`, `min_distance_m`): `tailgating` (vehicle in lane closer than 8 m) and `collision_risk` (TTC under 2.5 s). Distances appear in the annotated video labels.
+
+These numbers are approximate (a wrong FOV or an unusual vehicle size scales every distance) and were tested only on synthetic boxes with known geometry, not calibrated against real footage.
+
 ## Roadmap
 
 - [x] Scaffold: package layout, settings, CLI, tests, CI, Docker
 - [x] Detection and multi-object tracking pipeline
-- [ ] Monocular distance estimation and time-to-collision warnings
+- [x] Monocular distance estimation and time-to-collision warnings
 - [ ] Event detection (near-miss, sudden braking proxy, pedestrian proximity) with CSV/JSON export
 - [ ] Gradio UI and annotated video output
 - [ ] CPU FPS benchmark for nano/small models
