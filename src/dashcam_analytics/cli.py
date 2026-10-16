@@ -28,6 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     analyse.add_argument("--out-video", type=Path, help="write an annotated video here")
     analyse.add_argument("--summary", type=Path, help="write the JSON summary here")
     analyse.add_argument("--max-frames", type=int)
+    analyse.add_argument("--hfov", type=float, default=90.0, help="camera horizontal FOV, degrees")
     args = parser.parse_args(argv)
 
     if args.command == "status":
@@ -47,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
         s = Settings()
         detector = YoloDetector(s.yolo_model, s.image_size, s.confidence)
         try:
-            summary = analyse_video(args.video, detector, args.out_video, args.max_frames)
+            summary = analyse_video(args.video, detector, args.out_video, args.max_frames, hfov_deg=args.hfov)
         except FileNotFoundError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1
@@ -57,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
             args.summary.write_text(text)
         print(
             f"{summary.frames} frames, {summary.vehicles} vehicles, "
-            f"{summary.pedestrians} pedestrians"
+            f"{summary.pedestrians} pedestrians, {len(summary.warnings)} warnings"
         )
         return 0
     parser.print_help()
