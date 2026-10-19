@@ -49,12 +49,20 @@ Each tracked road user gets a distance from the pinhole model `distance = focal_
 
 These numbers are approximate (a wrong FOV or an unusual vehicle size scales every distance) and were tested only on synthetic boxes with known geometry, not calibrated against real footage.
 
+## Events and export
+
+```bash
+dashcam-analytics analyze data/videos/drive.mp4 --summary out/summary.json --events-csv out/events.csv
+```
+
+`events` in the JSON summary (and the CSV, one row per event) lists `near_miss` (ego-lane vehicle, TTC under 1.5 s and closer than 6 m), `sudden_braking` (ego-lane vehicle closing at 4 m/s or more within 30 m; a proxy that cannot tell the ego car braking from the lead car braking) and `pedestrian_proximity` (pedestrian within 10 m inside twice the ego-lane width). Consecutive frames merge into one event with start/end frame and time, minimum distance/TTC and peak closing speed. Thresholds are parameters of `EventDetector`; like the distances they are uncalibrated and only tested on synthetic boxes.
+
 ## Roadmap
 
 - [x] Scaffold: package layout, settings, CLI, tests, CI, Docker
 - [x] Detection and multi-object tracking pipeline
 - [x] Monocular distance estimation and time-to-collision warnings
-- [ ] Event detection (near-miss, sudden braking proxy, pedestrian proximity) with CSV/JSON export
+- [x] Event detection (near-miss, sudden braking proxy, pedestrian proximity) with CSV/JSON export
 - [ ] Gradio UI and annotated video output
 - [ ] CPU FPS benchmark for nano/small models
 
