@@ -27,6 +27,7 @@ def main(argv: list[str] | None = None) -> int:
     analyse.add_argument("video", type=Path)
     analyse.add_argument("--out-video", type=Path, help="write an annotated video here")
     analyse.add_argument("--summary", type=Path, help="write the JSON summary here")
+    analyse.add_argument("--events-csv", type=Path, help="write detected events as CSV here")
     analyse.add_argument("--max-frames", type=int)
     analyse.add_argument("--hfov", type=float, default=90.0, help="camera horizontal FOV, degrees")
     args = parser.parse_args(argv)
@@ -56,9 +57,15 @@ def main(argv: list[str] | None = None) -> int:
         if args.summary:
             args.summary.parent.mkdir(parents=True, exist_ok=True)
             args.summary.write_text(text)
+        if args.events_csv:
+            from .events import events_to_csv
+
+            args.events_csv.parent.mkdir(parents=True, exist_ok=True)
+            args.events_csv.write_text(events_to_csv(summary.events))
         print(
             f"{summary.frames} frames, {summary.vehicles} vehicles, "
-            f"{summary.pedestrians} pedestrians, {len(summary.warnings)} warnings"
+            f"{summary.pedestrians} pedestrians, {len(summary.warnings)} warnings, "
+            f"{len(summary.events)} events"
         )
         return 0
     parser.print_help()

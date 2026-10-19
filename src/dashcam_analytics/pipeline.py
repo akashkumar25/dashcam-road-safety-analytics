@@ -18,6 +18,7 @@ import supervision as sv
 from pydantic import BaseModel
 
 from .distance import CameraModel, DistanceEstimator, RiskWarning, classify
+from .events import Event, EventDetector
 
 # COCO class ids -> report label
 CLASS_LABELS = {0: "pedestrian", 2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
@@ -69,6 +70,7 @@ class VideoSummary(BaseModel):
     tracks: list[TrackRecord]
     min_distance_m: float | None = None
     warnings: list[RiskWarning] = []
+    events: list[Event] = []
 
     @property
     def vehicles(self) -> int:
@@ -104,6 +106,7 @@ def analyse_video(
         )
     estimator = DistanceEstimator(CameraModel(width=width, hfov_deg=hfov_deg), fps)
     warnings: list[RiskWarning] = []
+    event_detector = EventDetector(fps)
     min_distance: float | None = None
     tracker = sv.ByteTrack(frame_rate=max(1, round(fps)))
     box_annotator, label_annotator = sv.BoxAnnotator(), sv.LabelAnnotator()
@@ -134,6 +137,8 @@ def analyse_video(
                     if lead and (min_distance is None or reading.distance_m < min_distance):
                         min_distance = reading.distance_m
                     warnings.extend(classify(frame_index, reading))
+                    offset = abs((box[0] + box[2]) / 2 - width / 2) / width
+                    event_detector.update(frame_index, reading, offset)
                 texts.append(text)
             if writer is not None:
                 frame = box_annotator.annotate(frame.copy(), tracked)
@@ -169,4 +174,5 @@ def analyse_video(
         tracks=tracks,
         min_distance_m=min_distance,
         warnings=warnings,
+        events=event_detector.finish(),
     )

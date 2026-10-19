@@ -13,8 +13,8 @@ authors = [{ name = "Akash Kumar" }]
 dependencies = ["pydantic>=2.5", "pydantic-settings>=2.1"]
 
 [project.optional-dependencies]
-video = ["supervision>=0.25", "opencv-python-headless>=4.9", "numpy>=1.24"]
-vision = ["ultralytics>=8.3", "supervision>=0.25", "opencv-python-headless>=4.9"]
+video = ["supervision>=0.25,<0.31", "opencv-python-headless>=4.9", "numpy>=1.24"]
+vision = ["ultralytics>=8.3", "supervision>=0.25,<0.31", "opencv-python-headless>=4.9"]
 dev = ["pytest>=8", "ruff>=0.5"]
 
 [project.scripts]
