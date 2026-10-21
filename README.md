@@ -57,13 +57,22 @@ dashcam-analytics analyze data/videos/drive.mp4 --summary out/summary.json --eve
 
 `events` in the JSON summary (and the CSV, one row per event) lists `near_miss` (ego-lane vehicle, TTC under 1.5 s and closer than 6 m), `sudden_braking` (ego-lane vehicle closing at 4 m/s or more within 30 m; a proxy that cannot tell the ego car braking from the lead car braking) and `pedestrian_proximity` (pedestrian within 10 m inside twice the ego-lane width). Consecutive frames merge into one event with start/end frame and time, minimum distance/TTC and peak closing speed. Thresholds are parameters of `EventDetector`; like the distances they are uncalibrated and only tested on synthetic boxes.
 
+## Web UI
+
+```bash
+pip install -e ".[vision,ui]"
+dashcam-analytics ui            # http://127.0.0.1:7860
+```
+
+Upload a clip, set the camera field of view and a frame limit (default 300, so a first try finishes quickly on a CPU), and get the annotated video, counts, an events table and the JSON summary for download. The analysis logic lives in `AnalysisService` (no Gradio import) and is tested with a scripted detector; the Gradio app is only checked to build, not driven in a browser. The annotated video is written as `mp4v`; Gradio re-encodes it for the browser when `ffmpeg` is installed, otherwise the preview may not play (the file is still valid).
+
 ## Roadmap
 
 - [x] Scaffold: package layout, settings, CLI, tests, CI, Docker
 - [x] Detection and multi-object tracking pipeline
 - [x] Monocular distance estimation and time-to-collision warnings
 - [x] Event detection (near-miss, sudden braking proxy, pedestrian proximity) with CSV/JSON export
-- [ ] Gradio UI and annotated video output
+- [x] Gradio UI and annotated video output
 - [ ] CPU FPS benchmark for nano/small models
 
 ## Demo

@@ -30,6 +30,9 @@ def main(argv: list[str] | None = None) -> int:
     analyse.add_argument("--events-csv", type=Path, help="write detected events as CSV here")
     analyse.add_argument("--max-frames", type=int)
     analyse.add_argument("--hfov", type=float, default=90.0, help="camera horizontal FOV, degrees")
+    ui = sub.add_parser("ui", help="launch the Gradio web UI")
+    ui.add_argument("--host", default="127.0.0.1")
+    ui.add_argument("--port", type=int, default=7860)
     args = parser.parse_args(argv)
 
     if args.command == "status":
@@ -67,6 +70,17 @@ def main(argv: list[str] | None = None) -> int:
             f"{summary.pedestrians} pedestrians, {len(summary.warnings)} warnings, "
             f"{len(summary.events)} events"
         )
+        return 0
+    if args.command == "ui":
+        try:
+            from .pipeline import YoloDetector
+            from .ui import AnalysisService, build_app
+        except ImportError:
+            print('error: pip install -e ".[vision,ui]"', file=sys.stderr)
+            return 1
+        s = Settings()
+        service = AnalysisService(YoloDetector(s.yolo_model, s.image_size, s.confidence))
+        build_app(service).launch(server_name=args.host, server_port=args.port)
         return 0
     parser.print_help()
     return 0
