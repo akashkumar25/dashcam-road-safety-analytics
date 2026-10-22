@@ -66,6 +66,27 @@ dashcam-analytics ui            # http://127.0.0.1:7860
 
 Upload a clip, set the camera field of view and a frame limit (default 300, so a first try finishes quickly on a CPU), and get the annotated video, counts, an events table and the JSON summary for download. The analysis logic lives in `AnalysisService` (no Gradio import) and is tested with a scripted detector; the Gradio app is only checked to build, not driven in a browser. The annotated video is written as `mp4v`; Gradio re-encodes it for the browser when `ffmpeg` is installed, otherwise the preview may not play (the file is still valid).
 
+## CPU benchmark
+
+```bash
+dashcam-analytics benchmark data/videos/drive.mp4 --models yolov8n.pt yolov8s.pt --frames 60 --image-size 640
+```
+
+For each model the command reports detector-only FPS (after a warm-up) and end-to-end FPS of the full pipeline (decode, detect, ByteTrack, distance/TTC, events; no video written), plus the speed relative to the clip's own frame rate (above 1.0 means it keeps up live).
+
+Measured on a 4-vCPU Intel Xeon @ 2.10 GHz (no GPU), Ultralytics YOLOv8 pretrained weights, a 768x432, 12.5 FPS public sample clip (`car-detection.mp4` from [intel-iot-devkit/sample-videos](https://github.com/intel-iot-devkit/sample-videos)), 60 frames per run:
+
+| Model | Input size | Detector FPS | Full pipeline FPS | x real time |
+|---|---|---|---|---|
+| yolov8n | 640 | 20.4 | 24.4 | 1.96 |
+| yolov8s | 640 | 12.8 | 11.9 | 0.95 |
+| yolov8n | 480 | 41.9 | 37.8 | 3.02 |
+| yolov8s | 480 | 21.5 | 15.6 | 1.25 |
+| yolov8n | 320 | 83.9 | 66.0 | 5.28 |
+| yolov8s | 320 | 33.0 | 33.4 | 2.67 |
+
+Treat these as indicative: a shared vCPU varies by a few FPS between runs (the 640 nano row shows detector FPS below pipeline FPS for that reason), and a busier scene adds tracking cost. Takeaways: the nano model at 640 runs faster than a 12.5 FPS clip on four CPU cores; the small model at 640 is about real time; dropping the input size to 480 or 320 trades some accuracy on distant objects for 1.5-3x more throughput, which matters for the distance estimate of far vehicles. Use `DASHCAM_YOLO_MODEL` and `DASHCAM_IMAGE_SIZE` to choose the setting.
+
 ## Roadmap
 
 - [x] Scaffold: package layout, settings, CLI, tests, CI, Docker
@@ -73,7 +94,7 @@ Upload a clip, set the camera field of view and a frame limit (default 300, so a
 - [x] Monocular distance estimation and time-to-collision warnings
 - [x] Event detection (near-miss, sudden braking proxy, pedestrian proximity) with CSV/JSON export
 - [x] Gradio UI and annotated video output
-- [ ] CPU FPS benchmark for nano/small models
+- [x] CPU FPS benchmark for nano/small models
 
 ## Demo
 
