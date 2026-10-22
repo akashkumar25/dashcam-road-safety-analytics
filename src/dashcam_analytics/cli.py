@@ -30,6 +30,11 @@ def main(argv: list[str] | None = None) -> int:
     analyse.add_argument("--events-csv", type=Path, help="write detected events as CSV here")
     analyse.add_argument("--max-frames", type=int)
     analyse.add_argument("--hfov", type=float, default=90.0, help="camera horizontal FOV, degrees")
+    bench = sub.add_parser("benchmark", help="measure CPU frames per second for YOLO models")
+    bench.add_argument("video", type=Path)
+    bench.add_argument("--models", nargs="+", default=["yolov8n.pt", "yolov8s.pt"])
+    bench.add_argument("--frames", type=int, default=60)
+    bench.add_argument("--image-size", type=int, default=640)
     ui = sub.add_parser("ui", help="launch the Gradio web UI")
     ui.add_argument("--host", default="127.0.0.1")
     ui.add_argument("--port", type=int, default=7860)
@@ -70,6 +75,30 @@ def main(argv: list[str] | None = None) -> int:
             f"{summary.pedestrians} pedestrians, {len(summary.warnings)} warnings, "
             f"{len(summary.events)} events"
         )
+        return 0
+    if args.command == "benchmark":
+        try:
+            from .benchmark import benchmark_model, system_description, to_markdown
+            from .pipeline import YoloDetector
+        except ImportError:
+            print('error: install the vision stack: pip install -e ".[vision]"', file=sys.stderr)
+            return 1
+        s = Settings()
+        try:
+            rows = [
+                benchmark_model(
+                    Path(m).name,
+                    lambda m=m: YoloDetector(m, args.image_size, s.confidence),
+                    args.video,
+                    args.frames,
+                    args.image_size,
+                )
+                for m in args.models
+            ]
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        print(to_markdown(rows, args.video.name, system_description()))
         return 0
     if args.command == "ui":
         try:
